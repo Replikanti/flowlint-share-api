@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "automerge": true,
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+       "matchPackageNames": ["/^@replikanti\//"],
+       "automerge": true
+    },
+    {
+      "matchPackageNames": ["@replikanti/flowlint-core"],
+      "semanticCommitType": "fix",
+      "semanticCommitScope": "deps"
+    }
+  ]
+}
