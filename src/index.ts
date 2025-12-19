@@ -1,9 +1,10 @@
 /**
  * FlowLint Share API - Cloudflare Worker
+ * Proxy for GitHub Gist API to store and retrieve workflows.
  */
 
 export interface Env {
-	// GITHUB_TOKEN: string; // Set via wrangler secret put GITHUB_TOKEN
+	GITHUB_TOKEN: string; // Set via wrangler secret put GITHUB_TOKEN
 }
 
 const corsHeaders = {
@@ -24,15 +25,93 @@ export default {
 		const path = url.pathname;
 
 		try {
+			// POST /share - Create a new secret Gist
 			if (path === '/share' && request.method === 'POST') {
-				return new Response(JSON.stringify({ message: "Share endpoint ready" }), {
+				const body = await request.json() as { workflow: any };
+				if (!body.workflow) {
+					return new Response(JSON.stringify({ error: 'Missing workflow data' }), {
+						status: 400,
+						headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+					});
+				}
+
+				const response = await fetch('https://api.github.com/gists', {
+					method: 'POST',
+					headers: {
+						'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+						'Content-Type': 'application/json',
+						'User-Agent': 'FlowLint-Share-API',
+					},
+					body: JSON.stringify({
+						description: 'FlowLint Shared Workflow',
+						public: false, // Create as secret gist
+						files: {
+							'workflow.json': {
+								content: JSON.stringify(body.workflow, null, 2),
+							},
+						},
+					}),
+				});
+
+				if (!response.ok) {
+					const error = await response.text();
+					return new Response(JSON.stringify({ error: 'GitHub API error', details: error }), {
+						status: response.status,
+						headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+					});
+				}
+
+				const result = await response.json() as { id: string };
+				return new Response(JSON.stringify({ id: result.id }), {
+					status: 201,
 					headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 				});
 			}
 
+			// GET /get/:id - Retrieve an existing Gist
 			if (path.startsWith('/get/') && request.method === 'GET') {
 				const id = path.split('/')[2];
-				return new Response(JSON.stringify({ message: `Load endpoint ready for ID: ${id}` }), {
+				if (!id) {
+					return new Response(JSON.stringify({ error: 'Missing Gist ID' }), {
+						status: 400,
+						headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+					});
+				}
+
+				const response = await fetch(`https://api.github.com/gists/${id}`, {
+					method: 'GET',
+					headers: {
+						'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+						'User-Agent': 'FlowLint-Share-API',
+					},
+				});
+
+				if (!response.ok) {
+					return new Response(JSON.stringify({ error: 'Workflow not found' }), {
+						status: response.status,
+						headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+					});
+				}
+
+				const gist = await response.json() as any;
+				const file = gist.files['workflow.json'];
+
+				if (!file) {
+					return new Response(JSON.stringify({ error: 'Invalid gist content' }), {
+						status: 404,
+						headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+					});
+				}
+
+				// Check if content is truncated (GitHub API limits)
+				let content = file.content;
+				if (file.truncated) {
+					const rawResponse = await fetch(file.raw_url);
+					content = await rawResponse.text();
+				}
+
+				return new Response(content, {
+					status: 200,
 					headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 				});
 			}
