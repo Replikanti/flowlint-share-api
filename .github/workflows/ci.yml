@@ -15,4 +15,5 @@ jobs:
           node-version: '24.12.0'
           cache: 'npm'
       - run: npm ci
-      - run: npm run build
+      - run: npm run cf-typegen
+      - run: npm run test --if-present
