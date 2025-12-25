@@ -52,6 +52,24 @@ describe('Worker API', () => {
         })
       }));
     });
+
+    it('returns error if GitHub API fails', async () => {
+      const request = new Request('http://localhost/share', {
+        method: 'POST',
+        body: JSON.stringify({ workflow: { nodes: [] } }),
+      });
+
+      globalFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => 'GitHub Internal Error',
+      } as Response);
+
+      const response = await worker.fetch(request, env, ctx);
+      expect(response.status).toBe(500);
+      const data = await response.json<any>();
+      expect(data.error).toBe('GitHub API error');
+    });
   });
 
   describe('GET /get/:id', () => {
@@ -75,7 +93,57 @@ describe('Worker API', () => {
       expect(data.nodes).toEqual([]);
     });
 
-    it('returns 404 if gist not found', async () => {
+    it('handles truncated content', async () => {
+      const request = new Request('http://localhost/get/gist-123', {
+        method: 'GET',
+      });
+
+      // First fetch returns truncated metadata
+      globalFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          files: {
+            'workflow.json': { 
+              content: '', 
+              truncated: true, 
+              raw_url: 'http://raw.github/123' 
+            }
+          }
+        }),
+      } as Response);
+
+      // Second fetch returns raw content
+      globalFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => '{"nodes":[{"id":"1"}]}',
+      } as Response);
+
+      const response = await worker.fetch(request, env, ctx);
+      expect(response.status).toBe(200);
+      const data = await response.json<any>();
+      expect(data.nodes[0].id).toBe('1');
+      expect(globalFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns 404 if workflow.json is missing in gist', async () => {
+      const request = new Request('http://localhost/get/gist-123', {
+        method: 'GET',
+      });
+
+      globalFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          files: { 'other.txt': { content: '...' } }
+        }),
+      } as Response);
+
+      const response = await worker.fetch(request, env, ctx);
+      expect(response.status).toBe(404);
+      const data = await response.json<any>();
+      expect(data.error).toBe('Invalid gist content');
+    });
+
+    it('returns error if gist not found', async () => {
       const request = new Request('http://localhost/get/unknown', {
         method: 'GET',
       });
@@ -87,6 +155,33 @@ describe('Worker API', () => {
 
       const response = await worker.fetch(request, env, ctx);
       expect(response.status).toBe(404);
+    });
+  });
+
+  describe('Other routes', () => {
+    it('returns base info for root path', async () => {
+      const request = new Request('http://localhost/', { method: 'GET' });
+      const response = await worker.fetch(request, env, ctx);
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe('FlowLint Share API');
+    });
+
+    it('handles OPTIONS request for CORS', async () => {
+      const request = new Request('http://localhost/share', { method: 'OPTIONS' });
+      const response = await worker.fetch(request, env, ctx);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    });
+
+    it('handles internal errors', async () => {
+      const request = new Request('http://localhost/share', { 
+        method: 'POST',
+        body: 'invalid-json' 
+      });
+      const response = await worker.fetch(request, env, ctx);
+      expect(response.status).toBe(500);
+      const data = await response.json<any>();
+      expect(data.error).toBeDefined();
     });
   });
 });

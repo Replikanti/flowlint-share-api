@@ -112,12 +112,12 @@ export default {
 
 		try {
 			if (path === '/share' && request.method === 'POST') {
-				return handleShare(request, env);
+				return await handleShare(request, env);
 			}
 
 			if (path.startsWith('/get/') && request.method === 'GET') {
 				const id = path.split('/')[2];
-				return handleGet(id, env);
+				return await handleGet(id, env);
 			}
 
 			return new Response('FlowLint Share API', { 
