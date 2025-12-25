@@ -18,7 +18,7 @@ describe('Worker API', () => {
 
   describe('POST /share', () => {
     it('returns 400 if workflow data is missing', async () => {
-      const request = new Request('http://localhost/share', {
+      const request = new Request('https://localhost/share', {
         method: 'POST',
         body: JSON.stringify({}),
       });
@@ -30,7 +30,7 @@ describe('Worker API', () => {
     });
 
     it('creates a gist and returns ID on success', async () => {
-      const request = new Request('http://localhost/share', {
+      const request = new Request('https://localhost/share', {
         method: 'POST',
         body: JSON.stringify({ workflow: { nodes: [] } }),
       });
@@ -54,7 +54,7 @@ describe('Worker API', () => {
     });
 
     it('returns error if GitHub API fails', async () => {
-      const request = new Request('http://localhost/share', {
+      const request = new Request('https://localhost/share', {
         method: 'POST',
         body: JSON.stringify({ workflow: { nodes: [] } }),
       });
@@ -74,7 +74,7 @@ describe('Worker API', () => {
 
   describe('GET /get/:id', () => {
     it('returns 200 and workflow content on success', async () => {
-      const request = new Request('http://localhost/get/gist-123', {
+      const request = new Request('https://localhost/get/gist-123', {
         method: 'GET',
       });
 
@@ -94,7 +94,7 @@ describe('Worker API', () => {
     });
 
     it('handles truncated content', async () => {
-      const request = new Request('http://localhost/get/gist-123', {
+      const request = new Request('https://localhost/get/gist-123', {
         method: 'GET',
       });
 
@@ -106,7 +106,7 @@ describe('Worker API', () => {
             'workflow.json': { 
               content: '', 
               truncated: true, 
-              raw_url: 'http://raw.github/123' 
+              raw_url: 'https://raw.github/123' 
             }
           }
         }),
@@ -126,7 +126,7 @@ describe('Worker API', () => {
     });
 
     it('returns 404 if workflow.json is missing in gist', async () => {
-      const request = new Request('http://localhost/get/gist-123', {
+      const request = new Request('https://localhost/get/gist-123', {
         method: 'GET',
       });
 
@@ -144,7 +144,7 @@ describe('Worker API', () => {
     });
 
     it('returns error if gist not found', async () => {
-      const request = new Request('http://localhost/get/unknown', {
+      const request = new Request('https://localhost/get/unknown', {
         method: 'GET',
       });
 
@@ -160,21 +160,21 @@ describe('Worker API', () => {
 
   describe('Other routes', () => {
     it('returns base info for root path', async () => {
-      const request = new Request('http://localhost/', { method: 'GET' });
+      const request = new Request('https://localhost/', { method: 'GET' });
       const response = await worker.fetch(request, env, ctx);
       expect(response.status).toBe(200);
       expect(await response.text()).toBe('FlowLint Share API');
     });
 
     it('handles OPTIONS request for CORS', async () => {
-      const request = new Request('http://localhost/share', { method: 'OPTIONS' });
+      const request = new Request('https://localhost/share', { method: 'OPTIONS' });
       const response = await worker.fetch(request, env, ctx);
       expect(response.status).toBe(200);
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     });
 
     it('handles internal errors', async () => {
-      const request = new Request('http://localhost/share', { 
+      const request = new Request('https://localhost/share', { 
         method: 'POST',
         body: 'invalid-json' 
       });
