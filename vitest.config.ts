@@ -8,7 +8,7 @@ export default defineWorkersConfig({
 			},
 		},
 		coverage: {
-			provider: 'v8',
+			provider: 'istanbul',
 			reporter: ['text', 'json', 'html', 'clover', 'cobertura'],
 			include: ['src/**'],
 			thresholds: {
