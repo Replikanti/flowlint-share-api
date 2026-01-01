@@ -7,9 +7,10 @@ export default defineWorkersConfig({
 				wrangler: { configPath: './wrangler.jsonc' },
 			},
 		},
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'json-summary'],
-      include: ['src/**'],
+		coverage: {
+			provider: 'istanbul',
+			reporter: ['text', 'json', 'html', 'json-summary'],
+			include: ['src/**'],
+		},
 	},
 });
