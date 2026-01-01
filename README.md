@@ -1,6 +1,6 @@
 # FlowLint Share API
 
-![Coverage](https://img.shields.io/badge/coverage-75%25-yellow)
+![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)
 
 Cloudflare Worker API for sharing workflow analysis results.
 
